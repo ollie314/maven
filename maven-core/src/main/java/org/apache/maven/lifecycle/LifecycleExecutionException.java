@@ -19,8 +19,11 @@ package org.apache.maven.lifecycle;
  * under the License.
  */
 
+import static org.apache.maven.shared.utils.logging.MessageUtils.buffer;
+
 import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.utils.logging.MessageBuffer;
 
 /**
  * @author <a href="mailto:jason@maven.org">Jason van Zyl</a>
@@ -75,34 +78,27 @@ public class LifecycleExecutionException
 
     private static String createMessage( MojoExecution execution, MavenProject project, Throwable cause )
     {
-        StringBuilder buffer = new StringBuilder( 256 );
+        MessageBuffer buffer = buffer( 256 );
 
-        buffer.append( "Failed to execute goal" );
+        buffer.a( "Failed to execute goal" );
 
         if ( execution != null )
         {
-            buffer.append( ' ' );
-            buffer.append( execution.getGroupId() );
-            buffer.append( ':' );
-            buffer.append( execution.getArtifactId() );
-            buffer.append( ':' );
-            buffer.append( execution.getVersion() );
-            buffer.append( ':' );
-            buffer.append( execution.getGoal() );
-            buffer.append( " (" );
-            buffer.append( execution.getExecutionId() );
-            buffer.append( ')' );
+            buffer.a( ' ' ).a( execution.getGroupId() ).a( ':' );
+            buffer.mojo().a( execution.getArtifactId() ).a( ':' );
+            buffer.a( execution.getVersion() ).a( ':' ).a( execution.getGoal() ).reset();
+            buffer.strong().a( " (" ).a( execution.getExecutionId() ).a( ')' ).reset();
         }
 
         if ( project != null )
         {
-            buffer.append( " on project " );
-            buffer.append( project.getArtifactId() );
+            buffer.a( " on project " );
+            buffer.project( project.getArtifactId() );
         }
 
         if ( cause != null )
         {
-            buffer.append( ": " ).append( cause.getMessage() );
+            buffer.a( ": " ).failure( cause.getMessage() );
         }
 
         return buffer.toString();

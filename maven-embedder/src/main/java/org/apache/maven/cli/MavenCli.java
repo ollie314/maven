@@ -19,6 +19,8 @@ package org.apache.maven.cli;
  * under the License.
  */
 
+import static org.apache.maven.shared.utils.logging.MessageUtils.buffer;
+
 import java.io.BufferedInputStream;
 import java.io.Console;
 import java.io.File;
@@ -89,6 +91,7 @@ import org.apache.maven.model.profile.ProfileSelector;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.properties.internal.EnvironmentUtils;
 import org.apache.maven.properties.internal.SystemProperties;
+import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.maven.toolchain.building.DefaultToolchainsBuildingRequest;
 import org.apache.maven.toolchain.building.ToolchainsBuilder;
 import org.apache.maven.toolchain.building.ToolchainsBuildingResult;
@@ -207,7 +210,12 @@ public class MavenCli
     public static int main( String[] args, ClassWorld classWorld )
     {
         MavenCli cli = new MavenCli();
-        return cli.doMain( new CliRequest( args, classWorld ) );
+
+        MessageUtils.systemInstall();
+        int result = cli.doMain( new CliRequest( args, classWorld ) );
+        MessageUtils.systemUninstall();
+
+        return result;
     }
 
     // TODO: need to externalize CliRequest
@@ -217,7 +225,11 @@ public class MavenCli
         return cli.doMain( new CliRequest( args, classWorld ) );
     }
 
-    // This supports painless invocation by the Verifier during embedded execution of the core ITs
+    /**
+     * This supports painless invocation by the Verifier during embedded execution of the core ITs.
+     * See <a href="http://maven.apache.org/shared/maven-verifier/xref/org/apache/maven/it/Embedded3xLauncher.html">
+     * <code>Embedded3xLauncher</code> in <code>maven-verifier</code></a>
+     */
     public int doMain( String[] args, String workingDirectory, PrintStream stdout, PrintStream stderr )
     {
         PrintStream oldout = System.out;
@@ -461,10 +473,17 @@ public class MavenCli
         // else fall back to default log level specified in conf
         // see https://issues.apache.org/jira/browse/MNG-2570
 
+        if ( cliRequest.commandLine.hasOption( CLIManager.BATCH_MODE ) )
+        {
+            MessageUtils.setColor( false );
+        }
+
         if ( cliRequest.commandLine.hasOption( CLIManager.LOG_FILE ) )
         {
             File logFile = new File( cliRequest.commandLine.getOptionValue( CLIManager.LOG_FILE ) );
             logFile = resolveFile( logFile, cliRequest.workingDirectory );
+
+            MessageUtils.setColor( false );
 
             // redirect stdout and stderr to file
             try
@@ -1000,11 +1019,13 @@ public class MavenCli
 
             if ( !cliRequest.showErrors )
             {
-                slf4jLogger.error( "To see the full stack trace of the errors, re-run Maven with the -e switch." );
+                slf4jLogger.error( "To see the full stack trace of the errors, re-run Maven with the "
+                    + buffer().strong( "-e" ) + " switch." );
             }
             if ( !slf4jLogger.isDebugEnabled() )
             {
-                slf4jLogger.error( "Re-run Maven using the -X switch to enable full debug logging." );
+                slf4jLogger.error( "Re-run Maven using the " + buffer().strong( "-X" )
+                    + " switch to enable full debug logging." );
             }
 
             if ( !references.isEmpty() )
@@ -1015,7 +1036,7 @@ public class MavenCli
 
                 for ( Map.Entry<String, String> entry : references.entrySet() )
                 {
-                    slf4jLogger.error( entry.getValue() + " " + entry.getKey() );
+                    slf4jLogger.error( buffer().strong( entry.getValue() ) + " " + entry.getKey() );
                 }
             }
 
@@ -1023,7 +1044,8 @@ public class MavenCli
             {
                 slf4jLogger.error( "" );
                 slf4jLogger.error( "After correcting the problems, you can resume the build with the command" );
-                slf4jLogger.error( "  mvn <goals> -rf :" + project.getArtifactId() );
+                slf4jLogger.error( buffer().strong().a( "  mvn <goals> -rf :" )
+                                   .a( project.getArtifactId() ).reset().toString() );
             }
 
             if ( MavenExecutionRequest.REACTOR_FAIL_NEVER.equals( cliRequest.request.getReactorFailureBehavior() ) )
@@ -1298,7 +1320,7 @@ public class MavenCli
         //
         // ----------------------------------------------------------------------
 
-        @SuppressWarnings( "unchecked" ) List<String> goals = commandLine.getArgList();
+        List<String> goals = commandLine.getArgList();
 
         boolean recursive = true;
 
