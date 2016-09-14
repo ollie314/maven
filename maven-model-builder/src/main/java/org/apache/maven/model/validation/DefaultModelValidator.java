@@ -53,6 +53,7 @@ import org.apache.maven.model.building.ModelProblem.Severity;
 import org.apache.maven.model.building.ModelProblem.Version;
 import org.apache.maven.model.building.ModelProblemCollector;
 import org.apache.maven.model.building.ModelProblemCollectorRequest;
+import org.apache.maven.model.versioning.ModelVersions;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.util.StringUtils;
 
@@ -101,8 +102,16 @@ public class DefaultModelValidator
         {
             Severity errOn30 = getSeverity( request, ModelBuildingRequest.VALIDATION_LEVEL_MAVEN_3_0 );
 
+            // [MNG-6074] Maven should produce an error if no model version has been set in a POM file used to build an
+            //            effective model.
+            //
+            // As of 3.4, the model version is mandatory even in raw models. The XML element still is optional in the
+            // XML schema and this will not change anytime soon. We do not want to build effective models based on
+            // models without a version starting with 3.4.
+            validateStringNotEmpty( "modelVersion", problems, Severity.ERROR, Version.V20, m.getModelVersion(), m );
+
             validateEnum( "modelVersion", problems, Severity.ERROR, Version.V20, m.getModelVersion(), null, m,
-                          "4.0.0" );
+                          ModelVersions.V4_0_0, ModelVersions.V4_1_0 );
 
             validateStringNoExpression( "groupId", problems, Severity.WARNING, Version.V20, m.getGroupId(), m );
             if ( parent == null )

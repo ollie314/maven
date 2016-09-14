@@ -44,6 +44,7 @@ import java.util.StringTokenizer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.UnrecognizedOptionException;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.maven.BuildAbort;
 import org.apache.maven.InternalErrorException;
 import org.apache.maven.Maven;
@@ -91,6 +92,7 @@ import org.apache.maven.model.profile.ProfileSelector;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.properties.internal.EnvironmentUtils;
 import org.apache.maven.properties.internal.SystemProperties;
+import org.apache.maven.shared.utils.logging.MessageBuilder;
 import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.maven.toolchain.building.DefaultToolchainsBuildingRequest;
 import org.apache.maven.toolchain.building.ToolchainsBuilder;
@@ -475,7 +477,7 @@ public class MavenCli
 
         if ( cliRequest.commandLine.hasOption( CLIManager.BATCH_MODE ) )
         {
-            MessageUtils.setColor( false );
+            MessageUtils.setColorEnabled( false );
         }
 
         if ( cliRequest.commandLine.hasOption( CLIManager.LOG_FILE ) )
@@ -483,7 +485,7 @@ public class MavenCli
             File logFile = new File( cliRequest.commandLine.getOptionValue( CLIManager.LOG_FILE ) );
             logFile = resolveFile( logFile, cliRequest.workingDirectory );
 
-            MessageUtils.setColor( false );
+            MessageUtils.setColorEnabled( false );
 
             // redirect stdout and stderr to file
             try
@@ -529,9 +531,31 @@ public class MavenCli
         {
             slf4jLogger.info( "Enabling strict checksum verification on all artifact downloads." );
         }
+
+        if ( slf4jLogger.isDebugEnabled() )
+        {
+            slf4jLogger.debug( "Message scheme: " + ( MessageUtils.isColorEnabled() ? "color" : "plain" ) );
+            if ( MessageUtils.isColorEnabled() )
+            {
+                MessageBuilder buff = MessageUtils.buffer();
+                buff.a( "Message styles: " );
+                buff.debug( "debug" ).a( ' ' );
+                buff.info( "info" ).a( ' ' );
+                buff.warning( "warning" ).a( ' ' );
+                buff.error( "error" ).a( ' ' );
+                buff.success( "success" ).a( ' ' );
+                buff.failure( "failure" ).a( ' ' );
+                buff.strong( "strong" ).a( ' ' );
+                buff.mojo( "mojo" ).a( ' ' );
+                buff.project( "project" );
+                slf4jLogger.debug( buff.toString() );
+            }
+        }
     }
 
-    private void properties( CliRequest cliRequest )
+    //Needed to make this method package visible to make writing a unit test possible
+    //Maybe it's better to move some of those methods to separate class (SoC).
+    void properties( CliRequest cliRequest )
     {
         populateProperties( cliRequest.commandLine, cliRequest.systemProperties, cliRequest.userProperties );
     }
@@ -1044,8 +1068,8 @@ public class MavenCli
             {
                 slf4jLogger.error( "" );
                 slf4jLogger.error( "After correcting the problems, you can resume the build with the command" );
-                slf4jLogger.error( buffer().strong().a( "  mvn <goals> -rf :" )
-                                   .a( project.getArtifactId() ).reset().toString() );
+                slf4jLogger.error( buffer().a( "  " ).strong( "mvn <goals> -rf :"
+                    + project.getArtifactId() ).toString() );
             }
 
             if ( MavenExecutionRequest.REACTOR_FAIL_NEVER.equals( cliRequest.request.getReactorFailureBehavior() ) )
@@ -1647,9 +1671,14 @@ public class MavenCli
         if ( commandLine.hasOption( CLIManager.SET_SYSTEM_PROPERTY ) )
         {
             String[] defStrs = commandLine.getOptionValues( CLIManager.SET_SYSTEM_PROPERTY );
-
+            
             if ( defStrs != null )
             {
+                //The following is needed to get precedence
+                //of properties which are defined on command line
+                //over properties defined in the .mvn/maven.config. 
+                ArrayUtils.reverse( defStrs );
+                
                 for ( String defStr : defStrs )
                 {
                     setCliProperty( defStr, userProperties );
