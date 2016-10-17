@@ -1110,11 +1110,11 @@ public class MavenCli
         {
             if ( msg.indexOf( '\n' ) < 0 )
             {
-                msg += " -> " + referenceKey;
+                msg += " -> " + buffer().strong( referenceKey );
             }
             else
             {
-                msg += "\n-> " + referenceKey;
+                msg += "\n-> " + buffer().strong( referenceKey );
             }
         }
 
@@ -1143,7 +1143,6 @@ public class MavenCli
         }
     }
 
-    @SuppressWarnings( "checkstyle:methodlength" )
     private void configure( CliRequest cliRequest )
         throws Exception
     {
@@ -1209,7 +1208,6 @@ public class MavenCli
         }
     }
 
-    @SuppressWarnings( "checkstyle:methodlength" )
     private void toolchains( CliRequest cliRequest )
         throws Exception
     {
